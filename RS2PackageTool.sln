@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32328.378
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RS2PackageTool", "RS2PackageTool.csproj", "{51E84089-4BB6-4162-9345-E397BDCF24D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9E8E2BD3-4326-4E1D-A60A-95C866CA3438}
+	EndGlobalSection
+EndGlobal
