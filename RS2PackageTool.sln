@@ -7,10 +7,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RS2PackageTool", "RS2Packag
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug(ENV_RS_RiverRocks)|Any CPU = Debug(ENV_RS_RiverRocks)|Any CPU
+		Debug(IwoJima)|Any CPU = Debug(IwoJima)|Any CPU
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug(ENV_RS_RiverRocks)|Any CPU.ActiveCfg = Debug(ENV_RS_RiverRocks)|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug(ENV_RS_RiverRocks)|Any CPU.Build.0 = Debug(ENV_RS_RiverRocks)|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug(IwoJima)|Any CPU.ActiveCfg = Debug(IwoJima)|Any CPU
+		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug(IwoJima)|Any CPU.Build.0 = Debug(IwoJima)|Any CPU
 		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51E84089-4BB6-4162-9345-E397BDCF24D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
