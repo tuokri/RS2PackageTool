@@ -1,0 +1,140 @@
+﻿Index > 0 return Export[Index - 1];
+Index < 0 return Import[-Index - 1];
+Index = 0 return "Class"
+
+
+************************************************************************************************************************
+
+
+At the core of Unreal's loading code are its packages, which are modeled closely after DLLs for their dependencies. 
+A package always contains the following in this order:
+
+    package file summary
+    name table
+    import table
+    export table 
+
+The package file summary contains some basic information and offset/ size of the various tables stored in the package. 
+The name table contains all serialized names. The export table contains all objects serialized into the package, 
+while the import table contains all direct dependencies of objects serialized into the package.
+
+Each export in the export table contains an offset into the file where its data is located. The exports are saved 
+into the package in an order that allows them to be created / loaded in a linear fashion. This means that an object's 
+class or outer is always sorted before the object itself.
+
+
+************************************************************************************************************************
+
+
+
+Objects References.
+
+Objects are stored as compact indices with values defined as follows:
+
+    If Index==0: The object is NULL (known as NULL in C++, None in UnrealScript).
+    If Index<0: Refers to the (-Index-1)th object in this file's import table.
+    If Index>0: Refers to the (Index-1)th object in this file's export table.
+
+The Package file header.
+
+    int Tag: Always 0x9E2A83C1 (see PACKAGE_FILE_TAG in UnObjVer.h).
+    int FileVersion: Version of the engine which saved the file. Currently 61. Utilities should only operate on files 
+    with this exact version number, because only the file header is guaranteed not to change in future versions...
+    anything else could change (See PACKAGE_FILE_VERSION in UnObjVer.h).
+    int PackageFlags: Bitflags describing the package:
+        PKG_AllowDownload (0x0001): The package is allowed to be downloaded to clients freely.
+        PKG_ClientOptional (0x0002): All objects in the package are optional (i.e. skins, textures) and it's up to the 
+        client whether he wants to download them or not. Not yet implemented; currently ignored.
+        PKG_ServerSideOnly (0x0004): This package is only needed on the server side, and the client shouldn't be informed 
+        of its presence.  This is used with packages like IpDrv so that it can be updated frequently on the server side 
+        without requiring downloading stuff to the client.
+    int NameCount: Number of names stored in the name table. Always >= 0.
+    int NameOffset: Offset into the file of the name table, in bytes. 0 designates the first byte of the file, of course.
+    int ExportCount: Number of exported objects in the export table. Always >= 0.
+    int ExportOffset: Offset into the file of the export table.
+    int ImportCount: Number of imported objects in the import table. Always >= 0.
+    int ImportOffset: Offset into the file of the import table.
+    int HeritageCount: Number of GUID's stored in the package's heritage table. Always >= 1.
+    int HeritageOffset: Offset into the file of the heritage GUID table.
+
+The following tables reside in the file at the offset specified by the header.  If a table contains zero entries 
+(as specified in the header), the offset value is meaningless and should be ignored.
+Name table.
+
+Contains a list of human-readable Unreal names (which correspond to the UnrealScript "name" datatype and 
+the C++ "FName" data type).  Each name is stored consecutively in the following format:
+
+    string NameString: String representation of the name, up to NAME_SIZE characters (currently 64, 
+    may increase with future versions).
+    int NameFlags: Internal flags describing the name. See "Object and Name Flags" above.
+
+Export table.
+
+Contains a list of objects contained in (a.k.a. "exported by") this file. Similar to a Windows DLL's export table.
+
+    object reference ClassIndex: Points to the class object describing the class of this object.
+    int PackageIndex: Points to the package object describing the package this object resides in.
+    object reference SuperIndex: If this is a field (a struct, class, property, or another field subclass): 
+    Points to the superfield object of the field.
+    FName ObjectName: This object's name.
+    int ObjectFlags: Flags.
+    int SerialSize: Size (in bytes) of the object's serialized data stored in this file.
+    if SerialSize>=0, int SerialOffset: Offset into this file of the start of the object's serialized data.
+
+Import table.
+
+Contains a list of objects in other packages which this packages refers to. Similar to a Windows DLL's import table.
+
+    name ClassPackage: The name of the package which this object's class object resides in.
+    name ClassName: The name of this object's class.
+    int PackageIndex: The index of the package this object resides in.
+    FName ObjectName: The name of this object.
+
+
+************************************************************************************************************************
+
+
+
+ Loading
+
+Native packages are loaded so that any data defined in the packages that affect the native C++ classes 
+(through defaultproperties) are used when running the code. There are classes defined in C++ and script, 
+and they need to always be in sync.
+
+Package loading is a very complex system which most licensees never actually need to deal with on a low level.
+
+Exports are objects that exist in a package.
+
+Imports are references to objects in other packages.
+
+So, if you have a material MatX in package A, and it references TexY in package A and TexZ in package B, you'd have:
+
+Package A:
+        Exports:
+                MatX
+                TexY
+        Imports:
+                B.TexZ
+
+Package B:
+        Exports:
+                TexZ
+
+The editor loads the native script packages, packages listed in the EditPackages and 
+PackagesToBeFullyLoadedAtStartup keys in the configuration file, and all of their references.
+
+When you load a package (editor or game), it will load objects from other packages to resolve all references. 
+It will not load all the objects in the packages that are referenced. It loads the minimum needed from other packages.
+
+
+
+************************************************************************************************************************
+
+Consolidation algorithm:
+
+1. Given list of external package names (Pen)
+    1.1. Find all packages (Pen) within the map package (Pm)
+    1.2. Change all Pen within Pm to point to the actual
+         external packages (this is done in export table)
+    1.3. Add import table entries for "moved" packages?
+         -> requires shifting the whole package layout?
