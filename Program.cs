@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.Remoting.Metadata;
+﻿using System.Collections.Generic;
+using System.IO;
 using UELib;
-using UELib.Core;
 using log4net;
-using static UELib.BinaryMetaData;
 
 [assembly: log4net.Config.XmlConfigurator(Watch = true)]
 
@@ -24,9 +18,22 @@ namespace RS2PackageTool
 
         private static void Main(string[] args)
         {
-            var package = UnrealLoader.LoadPackage(args[0]);
+            var commonPackages = LoadCommonPackages();
+
+            var filePath = args[0];
+            Log.InfoFormat("reading           {0}", filePath);
+
+            var fileInfo = new FileInfo(filePath);
+            Log.InfoFormat("Length:           {0}", fileInfo.Length);
+            Log.InfoFormat("CreationTimeUtc:  {0:o}", fileInfo.CreationTimeUtc);
+            Log.InfoFormat("LastWriteTimeUtc: {0:o}", fileInfo.LastWriteTimeUtc);
+
+            var package = UnrealLoader.LoadCachedPackage(filePath);
 
             package.InitializePackage();
+
+            commonPackages.ForEach(p => RegisterTypes(p, package));
+
             package.InitializeExportObjects();
             package.InitializeImportObjects();
 
@@ -34,7 +41,7 @@ namespace RS2PackageTool
             Log.InfoFormat("PackageName:                {0}", package.PackageName);
             Log.InfoFormat("PackageDirectory:           {0}", package.PackageDirectory);
             Log.InfoFormat("GetBufferSize():            {0}", package.GetBufferSize());
-            Log.InfoFormat("GetBufferPosition()         {0}", package.GetBufferPosition());
+            Log.InfoFormat("GetBufferPosition():        {0}", package.GetBufferPosition());
             Log.InfoFormat("HeaderSize:                 {0}", package.HeaderSize);
             Log.InfoFormat("Version:                    {0}", package.Version);
             Log.InfoFormat("LicenseeVersion:            {0}", package.LicenseeVersion);
@@ -49,33 +56,48 @@ namespace RS2PackageTool
             Log.InfoFormat("Summary.ExportOffset:       {0}", package.Summary.ExportsOffset);
             Log.InfoFormat("Summary.ImportCount:        {0}", package.Summary.ImportsCount);
             Log.InfoFormat("Summary.ImportOffset:       {0}", package.Summary.ImportsOffset);
+            Log.InfoFormat("Summary.DependsOffset:      {0}", package.Summary.DependsOffset);
 
             var imports = package.Imports;
+            Log.Info("*** IMPORTS: ***");
             Log.InfoFormat("imports.Count: {0}", imports.Count);
             imports.ForEach(PrintImportTableItem);
 
             var exports = package.Exports;
+            Log.Info("*** EXPORTS: ***");
             Log.InfoFormat("exports.Count: {0}", exports.Count);
             exports.ForEach(PrintExportTableItem);
 
-            /*
-            var objects = package.Objects;
-            log.InfoFormat("objects.Count: {0}", objects.Count);
-            objects.ForEach(PrintObject);
-            */
+            var outStream = new UPackageStream("VNTE-IwoJimaOut.roe", FileMode.Create, FileAccess.Write);
+            outStream.PostInit(package);
+            package.Serialize(outStream);
+        }
 
-            // Console.ReadLine();
+        private static void RegisterTypes(UnrealPackage package, UnrealPackage targetPackage)
+        {
+            foreach (var uExportTableItem in package.Exports)
+            {
+                var className = uExportTableItem.ClassName;
+                if (!targetPackage.HasClassType(className))
+                {
+                    targetPackage.AddClassType(className, package.GetClassType(className));
+                }
+            }
+        }
+
+        private static List<UnrealPackage> LoadCommonPackages()
+        {
+            var packages = new List<UnrealPackage>
+            {
+                UnrealLoader.LoadCachedPackage(
+                    "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rising Storm 2\\ROGame\\BrewedPC\\AkAudio.u")
+            };
+
+            return packages;
         }
 
         private static void PrintImportTableItem(UImportTableItem importTableItem)
         {
-            // if (!CNames.Contains(importTableItem.ClassName))
-            // {
-            //     return;
-            // }
-
-            // var obj = importTableItem.Object;
-
             Log.Info("... ... ... ... ... ... ... ...");
 
             Log.InfoFormat("importTableItem : {0}", importTableItem);
@@ -90,14 +112,18 @@ namespace RS2PackageTool
             Log.InfoFormat("Owner           : {0}", importTableItem.Owner);
             Log.InfoFormat("ObjectName      : {0}", importTableItem.ObjectName);
 
-            /*
-            obj.BeginDeserializing();
-            log.InfoFormat("Object          : {0}", obj);
-            log.InfoFormat("Class           : {0}", obj.Class);
-            log.InfoFormat("Properties      : {0}", obj.Properties);
-            log.InfoFormat("GetClassName()  : {0}", obj.GetClassName());
-            log.InfoFormat("Decompile()     : {0}", obj.Decompile());
-            */
+            var o = importTableItem.Object;
+            if (o == null)
+            {
+                return;
+            }
+
+            // o.BeginDeserializing();
+            Log.InfoFormat("Object (O)      : {0}", o);
+            Log.InfoFormat("O.P.PackageName : {0}", o.Package.PackageName);
+            Log.InfoFormat("O.P.Pkg.Dir.    : {0}", o.Package.PackageDirectory);
+            Log.InfoFormat("O.Name          : {0}", o.Name);
+            Log.InfoFormat("O.GetOuterNa.() : {0}", o.GetOuterName());
         }
 
         private static void PrintExportTableItem(UExportTableItem exportTableItem)
@@ -120,23 +146,19 @@ namespace RS2PackageTool
             Log.InfoFormat("GetBufferId()   : {0}", exportTableItem.GetBufferId());
             Log.InfoFormat("GetBufferSize() : {0}", exportTableItem.GetBufferSize());
 
-            obj.BeginDeserializing();
+            // obj.BeginDeserializing();
             Log.InfoFormat("Object          : {0}", obj);
             Log.InfoFormat("Class           : {0}", obj.Class);
+            Log.InfoFormat("Name            : {0}", obj.Name);
+            Log.InfoFormat("Outer           : {0}", obj.Outer);
             Log.InfoFormat("Properties      : {0}", obj.Properties);
+            Log.InfoFormat("GetOuterName()  : {0}", obj.GetOuterName());
+            Log.InfoFormat("GetBufferId()   : {0}", obj.GetBufferId());
             Log.InfoFormat("GetBufferPos.() : {0}", obj.GetBufferPosition());
+            Log.InfoFormat("GetBufferSize() : {0}", obj.GetBufferSize());
             Log.InfoFormat("GetClassName()  : {0}", obj.GetClassName());
+            Log.InfoFormat("GetType()       : {0}", obj.GetType());
             Log.InfoFormat("Decompile()     : {0}", obj.Decompile());
-        }
-
-        private static void PrintObject(UObject uObject)
-        {
-            Log.Info("... ... ... ... ... ... ... ...");
-
-            Log.InfoFormat("uObject         : {0}", uObject);
-            Log.InfoFormat("GetType()       : {0}", uObject.GetType());
-            uObject.BeginDeserializing();
-            Log.InfoFormat("Decompile()     : {0}", uObject.Decompile());
         }
     }
 }
