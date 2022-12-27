@@ -61,7 +61,7 @@ namespace RS2PackageTool
             var imports = package.Imports;
             Log.Info("*** IMPORTS: ***");
             Log.InfoFormat("imports.Count: {0}", imports.Count);
-            imports.ForEach(PrintImportTableItem);
+            // imports.ForEach(PrintImportTableItem);
 
             var exports = package.Exports;
             Log.Info("*** EXPORTS: ***");
@@ -80,7 +80,12 @@ namespace RS2PackageTool
                 var className = uExportTableItem.ClassName;
                 if (!targetPackage.HasClassType(className))
                 {
-                    targetPackage.AddClassType(className, package.GetClassType(className));
+                    var classType = package.GetClassType(className);
+                    if (classType != null)
+                    {
+                        Log.InfoFormat("adding class type {0} {1}", className, classType);
+                        targetPackage.AddClassType(className, classType);
+                    }
                 }
             }
         }
@@ -142,6 +147,7 @@ namespace RS2PackageTool
             Log.InfoFormat("OuterTable      : {0}", exportTableItem.OuterTable);
             Log.InfoFormat("Owner           : {0}", exportTableItem.Owner);
             Log.InfoFormat("ObjectName      : {0}", exportTableItem.ObjectName);
+            Log.InfoFormat("SuperName       : {0}", exportTableItem.SuperName);
             Log.InfoFormat("GetBufferPos.() : {0}", exportTableItem.GetBufferPosition());
             Log.InfoFormat("GetBufferId()   : {0}", exportTableItem.GetBufferId());
             Log.InfoFormat("GetBufferSize() : {0}", exportTableItem.GetBufferSize());
