@@ -65,7 +65,7 @@ Contains a list of human-readable Unreal names (which correspond to the UnrealSc
 the C++ "FName" data type).  Each name is stored consecutively in the following format:
 
     string NameString: String representation of the name, up to NAME_SIZE characters (currently 64, 
-    may increase with future versions).
+        may increase with future versions).
     int NameFlags: Internal flags describing the name. See "Object and Name Flags" above.
 
 Export table.
@@ -75,7 +75,7 @@ Contains a list of objects contained in (a.k.a. "exported by") this file. Simila
     object reference ClassIndex: Points to the class object describing the class of this object.
     int PackageIndex: Points to the package object describing the package this object resides in.
     object reference SuperIndex: If this is a field (a struct, class, property, or another field subclass): 
-    Points to the superfield object of the field.
+        Points to the superfield object of the field.
     FName ObjectName: This object's name.
     int ObjectFlags: Flags.
     int SerialSize: Size (in bytes) of the object's serialized data stored in this file.

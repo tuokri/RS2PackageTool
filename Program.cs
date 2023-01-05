@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using UELib;
 using log4net;
+using UELib.Core;
 
 [assembly: log4net.Config.XmlConfigurator(Watch = true)]
 
@@ -30,12 +32,9 @@ namespace RS2PackageTool
 
             var package = UnrealLoader.LoadCachedPackage(filePath);
 
-            package.InitializePackage();
-
             commonPackages.ForEach(p => RegisterTypes(p, package));
 
-            package.InitializeExportObjects();
-            package.InitializeImportObjects();
+            package.InitializePackage();
 
             Log.InfoFormat("FullPackageName:            {0}", package.FullPackageName);
             Log.InfoFormat("PackageName:                {0}", package.PackageName);
@@ -58,15 +57,18 @@ namespace RS2PackageTool
             Log.InfoFormat("Summary.ImportOffset:       {0}", package.Summary.ImportsOffset);
             Log.InfoFormat("Summary.DependsOffset:      {0}", package.Summary.DependsOffset);
 
+            package.InitializeImportObjects();
             var imports = package.Imports;
             Log.Info("*** IMPORTS: ***");
             Log.InfoFormat("imports.Count: {0}", imports.Count);
-            // imports.ForEach(PrintImportTableItem);
+            imports.ForEach(PrintImportTableItem);
+            imports.ForEach(LoadImportPackages);
 
+            package.InitializeExportObjects();
             var exports = package.Exports;
             Log.Info("*** EXPORTS: ***");
             Log.InfoFormat("exports.Count: {0}", exports.Count);
-            exports.ForEach(PrintExportTableItem);
+            // exports.ForEach(PrintExportTableItem);
 
             var outStream = new UPackageStream("VNTE-IwoJimaOut.roe", FileMode.Create, FileAccess.Write);
             outStream.PostInit(package);
@@ -75,18 +77,25 @@ namespace RS2PackageTool
 
         private static void RegisterTypes(UnrealPackage package, UnrealPackage targetPackage)
         {
-            foreach (var uExportTableItem in package.Exports)
+            // foreach (var export in package.Exports)
+            foreach (var obj in package.Objects)
             {
-                var className = uExportTableItem.ClassName;
-                if (!targetPackage.HasClassType(className))
+                var type1 = obj.GetType();
+                var type2 = obj.GetFriendlyType();
+
+                if (obj.GetType() != typeof(UClass))
                 {
-                    var classType = package.GetClassType(className);
-                    if (classType != null)
-                    {
-                        Log.InfoFormat("adding class type {0} {1}", className, classType);
-                        targetPackage.AddClassType(className, classType);
-                    }
+                    continue;
                 }
+
+                var className = obj.GetFriendlyType();
+                if (targetPackage.HasClassType(className)) continue;
+
+                // var classType = package.GetClassType(className);
+
+                var classType = package.GetClassType(className);
+                Log.InfoFormat("adding class type {0} {1}", className, classType);
+                targetPackage.AddClassType(className, classType);
             }
         }
 
@@ -95,8 +104,22 @@ namespace RS2PackageTool
             var packages = new List<UnrealPackage>
             {
                 UnrealLoader.LoadCachedPackage(
-                    "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rising Storm 2\\ROGame\\BrewedPC\\AkAudio.u")
+                    "O:\\SteamLibrary\\steamapps\\common\\Rising Storm 2\\ROGame\\BrewedPC\\AkAudio.u")
             };
+
+            foreach (var package in packages)
+            {
+                try
+                {
+                    package.InitializePackage();
+                    package.InitializeImportObjects();
+                    package.InitializeExportObjects();
+                }
+                catch (Exception e)
+                {
+                    Log.WarnFormat("failed to initialize package {0}: {1}", package, e.Message);
+                }
+            }
 
             return packages;
         }
@@ -125,10 +148,12 @@ namespace RS2PackageTool
 
             // o.BeginDeserializing();
             Log.InfoFormat("Object (O)      : {0}", o);
+            Log.InfoFormat("O.Package       : {0}", o.Package);
             Log.InfoFormat("O.P.PackageName : {0}", o.Package.PackageName);
             Log.InfoFormat("O.P.Pkg.Dir.    : {0}", o.Package.PackageDirectory);
             Log.InfoFormat("O.Name          : {0}", o.Name);
             Log.InfoFormat("O.GetOuterNa.() : {0}", o.GetOuterName());
+            Log.InfoFormat("O.Outer         : {0}", o.Outer);
         }
 
         private static void PrintExportTableItem(UExportTableItem exportTableItem)
@@ -165,6 +190,56 @@ namespace RS2PackageTool
             Log.InfoFormat("GetClassName()  : {0}", obj.GetClassName());
             Log.InfoFormat("GetType()       : {0}", obj.GetType());
             Log.InfoFormat("Decompile()     : {0}", obj.Decompile());
+        }
+
+        private static void LoadImportPackages(UImportTableItem importTableItem)
+        {
+            var outer = importTableItem.Object.Outer;
+            var packageDir = importTableItem.Object.Package.PackageDirectory;
+            var pgkToLoad = "";
+
+            Log.InfoFormat("loading import packages for: {0}", importTableItem);
+
+            try
+            {
+                while (outer != null)
+                {
+                    Log.InfoFormat("outer: {0}", outer);
+
+                    if (outer.Outer == null)
+                    {
+                        pgkToLoad = packageDir + "\\" + outer.Name + ".u";
+                        var loadedPackage = UnrealLoader.LoadCachedPackage(pgkToLoad);
+
+                        try
+                        {
+                            loadedPackage.InitializePackage();
+                            loadedPackage.InitializeImportObjects();
+                            loadedPackage.InitializeExportObjects();
+                        }
+                        catch (Exception e)
+                        {
+                            Log.WarnFormat("failed to initialize package {0}: {1}", loadedPackage, e.Message);
+                        }
+
+                        Log.InfoFormat("loaded package: {0}", pgkToLoad);
+
+                        // var o = -importTableItem.OuterIndex - 1;
+                        // var outerIndex = importTableItem.OuterIndex;
+                        // Log.InfoFormat("loading object: {0}[{1}]", loadedPackage.PackageName, outerIndex);
+                        Log.InfoFormat("loaded object:  {0}",
+                            loadedPackage.FindObject<UObject>(importTableItem.ObjectName, checkForSubclass: true));
+
+                        break;
+                    }
+
+                    outer = outer.Outer;
+                }
+            }
+            catch (IOException)
+            {
+                Log.ErrorFormat("error loading {0}", pgkToLoad);
+            }
         }
     }
 }
