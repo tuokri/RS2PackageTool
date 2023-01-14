@@ -70,9 +70,10 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup> 
     <Reference Include="Eliot.UELib">
-      <HintPath>..\Unreal-Library\src\bin\Debug\Eliot.UELib.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Unreal-Library\src\bin\$(Configuration)\Eliot.UELib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -86,6 +87,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LogStream.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -1,9 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Security.Policy;
 using UELib;
 using log4net;
+using log4net.Appender;
 using UELib.Core;
+using UELib.Types;
 
 [assembly: log4net.Config.XmlConfigurator(Watch = true)]
 
@@ -18,9 +24,72 @@ namespace RS2PackageTool
             new List<string> { "StaticMeshActor", "StaticMeshComponent" };
         */
 
-        private static void Main(string[] args)
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            var commonPackages = LoadCommonPackages();
+            if (!Debugger.IsAttached)
+            {
+                //     AppDomain newDomain = AppDomain.CreateDomain("My Error Reporter");
+                //     newDomain.ExecuteAssembly(
+                //         "ErrorReporter.exe",
+                //         new Evidence(),
+                //         new String[]
+                //         {
+                //             Assembly.GetExecutingAssembly().GetName().Version.ToString(4),
+                //             e.ExceptionObject.ToString()
+                //         });
+                //
+            }
+
+            Log.ErrorFormat("error: {0}: {1}", sender, e);
+        }
+
+        private static void ProcessPackages(string[] args)
+        {
+            if (UnrealConfig.VariableTypes == null)
+            {
+                UnrealConfig.VariableTypes = new Dictionary<string, Tuple<string, PropertyType>>();
+            }
+
+            UnrealConfig.VariableTypes.Add(
+                "Materials",
+                new Tuple<string, PropertyType>("Engine.StaticMeshComponent", PropertyType.ObjectProperty));
+
+            UnrealConfig.VariableTypes.Add(
+                "SphereElems",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.StructProperty));
+            UnrealConfig.VariableTypes.Add(
+                "BoxElems",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.StructProperty));
+            UnrealConfig.VariableTypes.Add(
+                "SphylElems",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.StructProperty));
+            UnrealConfig.VariableTypes.Add(
+                "ConvexElems",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.StructProperty));
+
+            UnrealConfig.VariableTypes.Add(
+                "VertexData",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Vector));
+            UnrealConfig.VariableTypes.Add(
+                "PermutedVertexData",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Plane));
+            UnrealConfig.VariableTypes.Add(
+                "FaceTriData",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.IntProperty));
+            UnrealConfig.VariableTypes.Add(
+                "EdgeDirections",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Vector));
+            UnrealConfig.VariableTypes.Add(
+                "FaceNormalDirections",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Vector));
+            UnrealConfig.VariableTypes.Add(
+                "FacePlaneData",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Plane));
+            UnrealConfig.VariableTypes.Add(
+                "ElemBox",
+                new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Box));
+
+            // var commonPackages = LoadCommonPackages();
 
             var filePath = args[0];
             Log.InfoFormat("reading           {0}", filePath);
@@ -30,9 +99,10 @@ namespace RS2PackageTool
             Log.InfoFormat("CreationTimeUtc:  {0:o}", fileInfo.CreationTimeUtc);
             Log.InfoFormat("LastWriteTimeUtc: {0:o}", fileInfo.LastWriteTimeUtc);
 
-            var package = UnrealLoader.LoadCachedPackage(filePath);
+            // var package = UnrealLoader.LoadCachedPackage(filePath);
+            var package = UnrealLoader.LoadPackage(filePath);
 
-            commonPackages.ForEach(p => RegisterTypes(p, package));
+            // commonPackages.ForEach(p => RegisterTypes(p, package));
 
             package.InitializePackage();
 
@@ -41,38 +111,75 @@ namespace RS2PackageTool
             Log.InfoFormat("PackageDirectory:           {0}", package.PackageDirectory);
             Log.InfoFormat("GetBufferSize():            {0}", package.GetBufferSize());
             Log.InfoFormat("GetBufferPosition():        {0}", package.GetBufferPosition());
-            Log.InfoFormat("HeaderSize:                 {0}", package.HeaderSize);
             Log.InfoFormat("Version:                    {0}", package.Version);
             Log.InfoFormat("LicenseeVersion:            {0}", package.LicenseeVersion);
-            Log.InfoFormat("PackageFlags:               {0}", package.PackageFlags);
-            Log.InfoFormat("EngineVersion:              {0}", package.EngineVersion);
-            Log.InfoFormat("GUID:                       {0}", package.GUID);
-            Log.InfoFormat("CookerVersion:              {0}", package.CookerVersion);
-            Log.InfoFormat("CompressionFlags:           {0}", package.CompressionFlags);
-            Log.InfoFormat("Summary.NamesCount:         {0}", package.Summary.NamesCount);
-            Log.InfoFormat("Summary.NamesOffset:        {0}", package.Summary.NamesOffset);
-            Log.InfoFormat("Summary.ExportCount:        {0}", package.Summary.ExportsCount);
-            Log.InfoFormat("Summary.ExportOffset:       {0}", package.Summary.ExportsOffset);
-            Log.InfoFormat("Summary.ImportCount:        {0}", package.Summary.ImportsCount);
-            Log.InfoFormat("Summary.ImportOffset:       {0}", package.Summary.ImportsOffset);
+            Log.InfoFormat("GUID.Summary:               {0}", package.Summary.Guid);
+            Log.InfoFormat("CookerVersion.Summary:      {0}", package.Summary.CookerVersion);
+            Log.InfoFormat("CompressionFlags.Summary:   {0}", package.Summary.CompressionFlags);
+            Log.InfoFormat("EngineVersion.Summary:      {0}", package.Summary.EngineVersion);
+            Log.InfoFormat("PackageFlags.Summary:       {0}", package.Summary.PackageFlags);
+            Log.InfoFormat("HeaderSize.Summary:         {0}", package.Summary.HeaderSize);
+            Log.InfoFormat("Summary.NameCount:          {0}", package.Summary.NameCount);
+            Log.InfoFormat("Summary.NameOffset:         {0}", package.Summary.NameOffset);
+            Log.InfoFormat("Summary.ImportCount:        {0}", package.Summary.ImportCount);
+            Log.InfoFormat("Summary.ImportOffset:       {0}", package.Summary.ImportOffset);
+            Log.InfoFormat("Summary.ExportCount:        {0}", package.Summary.ExportCount);
+            Log.InfoFormat("Summary.ExportOffset:       {0}", package.Summary.ExportOffset);
             Log.InfoFormat("Summary.DependsOffset:      {0}", package.Summary.DependsOffset);
+            Log.InfoFormat("S.Imp.Exp.GuidsOffset:      {0}", package.Summary.ImportExportGuidsOffset);
+            Log.InfoFormat("Summary.ImportGuidsCount:   {0}", package.Summary.ImportGuidsCount);
+            Log.InfoFormat("Summary.ExportGuidsCount:   {0}", package.Summary.ExportGuidsCount);
+            Log.InfoFormat("S.ThumbnailTableOffset:     {0}", package.Summary.ThumbnailTableOffset);
+            Log.InfoFormat("S.GatherableTextDataCount:  {0}", package.Summary.GatherableTextDataCount);
+            Log.InfoFormat("S.GatherableTextDataOffset: {0}", package.Summary.GatherableTextDataOffset);
+            Log.InfoFormat("S.StringAssetRef.Count:     {0}", package.Summary.StringAssetReferencesCount);
+            Log.InfoFormat("S.StringAssetRef.Offset:    {0}", package.Summary.StringAssetReferencesOffset);
+            Log.InfoFormat("S.SearchableNamesOffset:    {0}", package.Summary.SearchableNamesOffset);
 
             package.InitializeImportObjects();
             var imports = package.Imports;
             Log.Info("*** IMPORTS: ***");
             Log.InfoFormat("imports.Count: {0}", imports.Count);
             imports.ForEach(PrintImportTableItem);
-            imports.ForEach(LoadImportPackages);
+            // imports.ForEach(LoadImportPackages);
 
             package.InitializeExportObjects();
             var exports = package.Exports;
             Log.Info("*** EXPORTS: ***");
             Log.InfoFormat("exports.Count: {0}", exports.Count);
-            // exports.ForEach(PrintExportTableItem);
+            exports.ForEach(PrintExportTableItem);
+
+            foreach (var bmd in package.BinaryMetaData.Fields)
+            {
+                if (bmd.Field == "dependsMap")
+                {
+                    Log.InfoFormat("*** dependsMap: ***");
+                    Log.InfoFormat("{0}", bmd.Decompile());
+                }
+            }
 
             var outStream = new UPackageStream("VNTE-IwoJimaOut.roe", FileMode.Create, FileAccess.Write);
             outStream.PostInit(package);
             package.Serialize(outStream);
+        }
+
+        private static void Main(string[] args)
+        {
+            // var logStream = new LogStream(Log);
+            // Console.SetOut(logStream.Writer);
+
+            // AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+            ProcessPackages(args);
+            // try
+            // {
+            //     ProcessPackages(args);
+            // }
+            // catch (Exception e)
+            // {
+            //     Log.ErrorFormat("error: {0}", e);
+            //     throw;
+            // }
         }
 
         private static void RegisterTypes(UnrealPackage package, UnrealPackage targetPackage)
@@ -94,6 +201,8 @@ namespace RS2PackageTool
                 // var classType = package.GetClassType(className);
 
                 var classType = package.GetClassType(className);
+                if (classType == null) continue;
+
                 Log.InfoFormat("adding class type {0} {1}", className, classType);
                 targetPackage.AddClassType(className, classType);
             }
@@ -103,7 +212,7 @@ namespace RS2PackageTool
         {
             var packages = new List<UnrealPackage>
             {
-                UnrealLoader.LoadCachedPackage(
+                UnrealLoader.LoadPackage(
                     "O:\\SteamLibrary\\steamapps\\common\\Rising Storm 2\\ROGame\\BrewedPC\\AkAudio.u")
             };
 
@@ -137,6 +246,7 @@ namespace RS2PackageTool
             Log.InfoFormat("OuterName       : {0}", importTableItem.OuterName);
             Log.InfoFormat("OuterIndex      : {0}", importTableItem.OuterIndex);
             Log.InfoFormat("OuterTable      : {0}", importTableItem.OuterTable);
+            Log.InfoFormat("Outer           : {0}", importTableItem.Outer);
             Log.InfoFormat("Owner           : {0}", importTableItem.Owner);
             Log.InfoFormat("ObjectName      : {0}", importTableItem.ObjectName);
 
@@ -152,7 +262,7 @@ namespace RS2PackageTool
             Log.InfoFormat("O.P.PackageName : {0}", o.Package.PackageName);
             Log.InfoFormat("O.P.Pkg.Dir.    : {0}", o.Package.PackageDirectory);
             Log.InfoFormat("O.Name          : {0}", o.Name);
-            Log.InfoFormat("O.GetOuterNa.() : {0}", o.GetOuterName());
+            Log.InfoFormat("O.Outer?.Name   : {0}", o.Outer?.Name);
             Log.InfoFormat("O.Outer         : {0}", o.Outer);
         }
 
@@ -163,16 +273,18 @@ namespace RS2PackageTool
             Log.Info("... ... ... ... ... ... ... ...");
 
             Log.InfoFormat("exportTableItem : {0}", exportTableItem);
-            Log.InfoFormat("ClassName       : {0}", exportTableItem.ClassName);
+            Log.InfoFormat("ClassName       : {0}", exportTableItem.Class);
             Log.InfoFormat("Index           : {0}", exportTableItem.Index);
             Log.InfoFormat("Offset          : {0}", exportTableItem.Offset);
             Log.InfoFormat("Size            : {0}", exportTableItem.Size);
-            Log.InfoFormat("OuterName       : {0}", exportTableItem.OuterName);
+            // Log.InfoFormat("OuterName       : {0}", exportTableItem.OuterName);
+            Log.InfoFormat("Outer           : {0}", exportTableItem.Outer);
             Log.InfoFormat("OuterIndex      : {0}", exportTableItem.OuterIndex);
             Log.InfoFormat("OuterTable      : {0}", exportTableItem.OuterTable);
             Log.InfoFormat("Owner           : {0}", exportTableItem.Owner);
             Log.InfoFormat("ObjectName      : {0}", exportTableItem.ObjectName);
-            Log.InfoFormat("SuperName       : {0}", exportTableItem.SuperName);
+            // Log.InfoFormat("SuperName       : {0}", exportTableItem.SuperName);
+            Log.InfoFormat("Super           : {0}", exportTableItem.Super);
             Log.InfoFormat("GetBufferPos.() : {0}", exportTableItem.GetBufferPosition());
             Log.InfoFormat("GetBufferId()   : {0}", exportTableItem.GetBufferId());
             Log.InfoFormat("GetBufferSize() : {0}", exportTableItem.GetBufferSize());
@@ -183,7 +295,7 @@ namespace RS2PackageTool
             Log.InfoFormat("Name            : {0}", obj.Name);
             Log.InfoFormat("Outer           : {0}", obj.Outer);
             Log.InfoFormat("Properties      : {0}", obj.Properties);
-            Log.InfoFormat("GetOuterName()  : {0}", obj.GetOuterName());
+            Log.InfoFormat("Outer.?Name     : {0}", obj.Outer?.Name);
             Log.InfoFormat("GetBufferId()   : {0}", obj.GetBufferId());
             Log.InfoFormat("GetBufferPos.() : {0}", obj.GetBufferPosition());
             Log.InfoFormat("GetBufferSize() : {0}", obj.GetBufferSize());
