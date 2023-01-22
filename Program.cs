@@ -89,6 +89,13 @@ namespace RS2PackageTool
                 "ElemBox",
                 new Tuple<string, PropertyType>("Engine.KMeshProps", PropertyType.Box));
 
+            UnrealConfig.VariableTypes.Add(
+                "Layers",
+                new Tuple<string, PropertyType>("Engine.Terrain", PropertyType.StringProperty));
+            UnrealConfig.VariableTypes.Add(
+                "TerrainComponents",
+                new Tuple<string, PropertyType>("Engine.Terrain", PropertyType.ObjectProperty));
+
             // var commonPackages = LoadCommonPackages();
 
             var filePath = args[0];
@@ -99,7 +106,6 @@ namespace RS2PackageTool
             Log.InfoFormat("CreationTimeUtc:  {0:o}", fileInfo.CreationTimeUtc);
             Log.InfoFormat("LastWriteTimeUtc: {0:o}", fileInfo.LastWriteTimeUtc);
 
-            // var package = UnrealLoader.LoadCachedPackage(filePath);
             var package = UnrealLoader.LoadPackage(filePath);
 
             // commonPackages.ForEach(p => RegisterTypes(p, package));
@@ -321,7 +327,7 @@ namespace RS2PackageTool
                     if (outer.Outer == null)
                     {
                         pgkToLoad = packageDir + "\\" + outer.Name + ".u";
-                        var loadedPackage = UnrealLoader.LoadCachedPackage(pgkToLoad);
+                        var loadedPackage = UnrealLoader.LoadPackage(pgkToLoad);
 
                         try
                         {
